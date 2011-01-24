@@ -1,0 +1,340 @@
+<?php
+
+define('FUNNELBACK_DEFAULT_NUM_PAGES', 10);
+define('FUNNELBACK_BEST_BETS_CLICK_TYPE', 'FP');
+define('FUNNELBACK_URL_MAX_LENGTH', 80);
+define('FUNNELBACK_DESC_MAX_LENGTH', 180);
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function funnelback_menu() {
+  $items = array();
+  $items['funnelback/search'] = array(
+    'title' => 'Search',
+    'description' => 'Search using Funnelback',
+    'page callback' => 'funnelback_search_view',
+    'access arguments' => array('use funnelback search'),
+  );
+  $items['admin/settings/funnelback'] = array(
+    'title' => 'Funnelback Settings',
+    'description' => 'Configure funnelback settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('funnelback_admin_form'),
+    'access arguments' => array('administer funnelback'),
+    'file' => 'funnelback.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function funnelback_perm() {
+  return array(
+    'use funnelback search', 
+    'administer funnelback',
+  );
+}
+
+/**
+ * Page callback for funnelback search
+ */
+function funnelback_search_view() {
+  $query = filter_xss($_GET['query']);
+  $start = filter_xss($_GET['start']);
+  $results = funnelback_do_query($query, $start);
+  $summary = $results['summary'];
+  $pager = theme('funnelback_pager', $summary);
+  $output = theme('funnelback_results', $results, $pager);
+  return $output;
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function funnelback_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+
+    case 'list':
+      $blocks[0]['info'] = t('Funnelback Contextual Nav');
+      return $blocks;
+
+    case 'view':
+      if ($delta == 0 && funnelback_has_searched()) {
+        $block['subject'] = t('Have you tried?');
+        $block['content'] = funnelback_contextual_nav_view();
+      }
+      
+      return $block;
+  }
+}
+
+/**
+ * Block callback for contextual navs
+ */
+function funnelback_contextual_nav_view() {
+  $results = funnelback_static_results_cache();
+  $contextual_nav = $results['contextual_nav'];
+  $summary = $results['summary'];
+  $output = theme('funnelback_contextual_nav_block', $summary, $contextual_nav);
+  return $output;
+}
+
+/**
+ * Need to keep a cache of the search results for the entire page durations so blocks can access it.
+ */
+function funnelback_static_results_cache($results = NULL) {
+  static $_results = NULL;
+  if (is_array($results)) {
+    $_results = $results;
+  }
+  return $_results;
+}
+
+/**
+ * Semaphore that indicates whether a search has been done. Blocks use this
+ * later to decide whether they should load or not.
+ *
+ * @param $searched
+ *   A boolean indicating whether a search has been executed.
+ *
+ * @return
+ *   TRUE if a search has been executed.
+ *   FALSE otherwise.
+ */
+function funnelback_has_searched($searched = NULL) {
+  static $_searched = FALSE;
+  if (is_bool($searched)) {
+    $_searched = $searched;
+  }
+  return $_searched;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function funnelback_theme() {
+  return array(
+    'funnelback_results' => array(
+      'arguments' => array('results' => NULL, 'pager' => NULL),
+      'template' => 'funnelback_results',
+    ),
+    'funnelback_contextual_nav_block' => array(
+      'arguments' => array('summary' => NULL, 'contextual_nav' => NULL),
+      'template' => 'funnelback_contextual_nav_block',
+    ),
+    'funnelback_pager' => array(
+      'arguments' => array('summary' => NULL),
+      'template' => 'funnelback_pager',
+    ),
+  );
+}
+
+/**
+ * Preprocess function for the funnelback_results template
+ */
+function funnelback_preprocess_funnelback_results(&$vars) {
+  $results = $vars['results'];
+  $vars['summary'] = $results['summary'];
+  $vars['spell'] = $results['spell'];
+  $vars['items'] = $results['results'];
+  $vars['best_bets'] = $results['best_bets'];
+}
+
+/**
+ * Preprocess function for the funnelback_results template
+ */
+function funnelback_preprocess_funnelback_pager(&$vars) {
+  $summary = $vars['summary'];
+  $page_size = intval($summary['page_size']);
+  $start = intval($summary['start']);
+  $i = 0;
+  $pager = array();
+  $pages = array();
+  while ($i < FUNNELBACK_DEFAULT_NUM_PAGES && $i * $page_size < $summary['total']) {
+    // create the pager title and link
+    $page = array();
+    $page['title'] = strval($i + 1);
+    $page['link'] = '?query='. urlencode($summary['query']) .'&start='. strval($i * $page_size + 1);
+    
+    // flag the current page
+    $current = FALSE;
+    if ($start == ($i * $page_size + 1)) {
+      $current = TRUE;
+    }
+    $page['current'] = $current;
+    
+    // create the previous/next links
+    if ($current) {
+      $pager['prev_link'] = '?query='. urlencode($summary['query']) .'&start='. strval(($i - 1) * $page_size + 1);
+      $pager['next_link'] = '?query='. urlencode($summary['query']) .'&start='. strval(($i + 1) * $page_size + 1);
+    }
+    
+    // add page to our arrays
+    $pages[] = $page;
+    
+    // increment
+    $i++;
+  }
+  
+  $pager['pages'] = $pages;
+  
+  // flag if we're on the first page
+  if (intval($summary['start']) == 1) {
+    $pager['first'] = TRUE;
+  }
+  
+  $vars['pager'] = $pager;
+}
+
+
+/**
+ * Calls the Funnelback XML web service interface, and returns an array containing results data.
+ */
+function funnelback_do_query($query, $start = 1) {
+  
+  $base_url = variable_get('funnelback_base_url', 'https://cr04-pd01-cbr01-au.funnelback.com/search/');
+  $collection = variable_get('funnelback_collection', 'www-nsw-gov-au');
+  $url = $base_url .'/xml.cgi?collection='. urlencode($collection) .'&query='. urlencode($query) .'&start_rank='. urlencode($start);
+  
+  // perform the request
+  $response = drupal_http_request($url);
+  
+  // Process HTTP response code.
+  switch ($response->code) {
+    case 200:
+      // parse the xml data
+      $xml = simplexml_load_string($response->data);
+      
+      // load up the results summary
+      $summary = array();
+      $summary['start'] = (int)$xml->results_summary->currstart;
+      $summary['end'] = (int)$xml->results_summary->currend;
+      $summary['page_size'] = (int)$xml->results_summary->num_ranks;
+      $summary['total'] = (int)$xml->results_summary->fully_matching;
+      $summary['query'] = (string)$xml->query_as_processed;
+      $summary['base_url'] = $base_url;
+      
+      $spell = array();
+      if ($xml->spell && $xml->spell != '') {
+        $suggestion = array();
+        $suggestion['url'] = (string)$xml->spell->url;
+        $suggestion['text'] = (string)$xml->spell->text;
+        $spell[] = $suggestion;
+      }
+      
+      $best_bets = array();
+      foreach($xml->best_bets->bb as $bb) {
+        $best_bet = array();
+        $bb_link = (string)$bb->bb_link;
+        $best_bet['live_url'] = $bb_link;
+        $best_bet['title'] = (string)$bb->bb_title;
+        $best_bet['desc'] = (string)$bb->bb_desc;
+        
+        $best_bet['click_url'] = $base_url .'click.cgi?'. http_build_query(array(
+          'url' => $bb_link,
+          'collection' => $collection,
+          'type' =>FUNNELBACK_BEST_BETS_CLICK_TYPE,
+        ));
+        
+        $best_bets[] = $best_bet;
+      }
+      
+      $items = array();
+      foreach($xml->results->result as $result) {
+        $item = array();
+        $item['title'] = (string)$result->title;
+        $item['date'] = (string)$result->date;
+        $item['summary'] = (string)$result->summary;
+        $live_url = (string)$result->live_url;
+       $item['live_url'] = _funnelback_truncate_url($live_url);
+        $item['cache_url'] =  (string)$result->cache_url;
+
+        $click_url = $base_url .'click.cgi?'. http_build_query(array(
+          'rank' => (string)$result->rank,
+          'collection' => $collection,
+          'component' => (string)$result->component,
+          'score' => (string)$result->score,
+          'docnum' => (string)$result->docnum,
+          'url' => $live_url,
+        ));
+        $item['click_url'] = $click_url;
+        $items[] = $item;
+      }
+      
+      // load up the contextual navigation
+      $contextual_nav = array();
+      foreach($xml->contextual_navigation->category as $category) {
+        $nav_item = array();
+        $nav_item['name'] = (string)$category['name'];
+        $more_link = (string)$category->more_link;
+        if (!empty($more_link)) {
+          $nav_item['more_link'] = $more_link;
+        }
+        
+        $clusters = array();
+        foreach($category->cluster as $cluster) {
+          $clusters[] = array(
+            'title' => (string)$cluster,
+            'count' => (int)$cluster['count'],
+            'link' => (string)$cluster['href'],
+          );
+        }
+        $nav_item['clusters'] = $clusters;
+        
+        $contextual_nav[] = $nav_item;
+      }
+      
+      // return the results
+      $results = array(
+        'summary' => $summary,
+        'spell' => $spell,
+        'best_bets' => $best_bets,
+        'results' => $items,
+        'contextual_nav' => $contextual_nav,
+      );
+
+      $nav_results = array(
+        'summary' => $summary,
+        'contextual_nav' => $contextual_nav,
+      );
+      
+      funnelback_has_searched(TRUE);
+      funnelback_static_results_cache($nav_results);
+          
+      return $results;
+      
+      break;
+    default:
+      watchdog('funnelback', 'The search query failed due to "%error".', array('%error' => $result->code . ' ' . $result->error), WATCHDOG_WARNING);
+    
+    return NULL;
+  }
+}
+
+/**
+ * Truncate the display url so it displays on one line
+ */
+function _funnelback_truncate_url($url) {
+  // split the url into bits so we can choose what to keep
+  $url_arr = parse_url($url);
+  $host = $url_arr['host'];
+  // always keep the host
+  $max_len = FUNNELBACK_URL_MAX_LENGTH - strlen($host);
+  $path = $url_arr['path'];
+  $query = $url_arr['query'];
+  if (!empty($query)) {
+    $path = $path .'?'. $query;
+  }
+  // put elipsis in the middle of the path
+  $path_len = strlen($path);
+  if ($path_len > $max_len) {
+    $start = $max_len / 2;
+    $trunc =  $path_len - $max_len;
+    $path = substr_replace($path, '&hellip;', $start, $trunc);
+  }
+  return $host.$path;
+}

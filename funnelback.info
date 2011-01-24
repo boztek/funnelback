@@ -1,0 +1,5 @@
+name=Funnelback Search Integration
+description = Provides search integration with a Funnelback XML search interface
+core = 6.x 
+package = Search
+; dependencies[] = querypath

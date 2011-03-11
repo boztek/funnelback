@@ -4,7 +4,7 @@ define('FUNNELBACK_DEFAULT_NUM_PAGES', 10);
 define('FUNNELBACK_BEST_BETS_CLICK_TYPE', 'FP');
 define('FUNNELBACK_URL_MAX_LENGTH', 80);
 define('FUNNELBACK_DESC_MAX_LENGTH', 180);
-
+define('FUNNELBACK_TITLE_MAX_LENGTH', 80);
 
 /**
  * Implementation of hook_menu().
@@ -196,9 +196,17 @@ function funnelback_preprocess_funnelback_pager(&$vars) {
  */
 function funnelback_do_query($query, $start = 1) {
   
-  $base_url = variable_get('funnelback_base_url', 'https://cr04-pd01-cbr01-au.funnelback.com/search/');
+  $base_url = variable_get('funnelback_base_url', 'https://example.funnelback.com/search/');
+  $xml_path = variable_get('funnelback_xml_path', 'xml.cgi');
   $collection = variable_get('funnelback_collection', 'www-nsw-gov-au');
-  $url = $base_url .'/xml.cgi?collection='. urlencode($collection) .'&query='. urlencode($query) .'&start_rank='. urlencode($start);
+  $request_params = array(
+    'remote_ip' => ip_address(),
+    'query' => $query,
+    'start_rank' => $start,
+    'collection' => $collection,
+  );
+  $url = $base_url.$xml_path .'?'. http_build_query($request_params);
+  watchdog('funnelback', 'Query url: %url', array('%url' => $url), WATCHDOG_DEBUG);
   
   // perform the request
   $response = drupal_http_request($url);
@@ -227,15 +235,15 @@ function funnelback_do_query($query, $start = 1) {
       }
       
       $best_bets = array();
-      foreach($xml->best_bets->bb as $bb) {
+      foreach($xml->featured_pages->fp as $fp) {
         $best_bet = array();
-        $bb_link = (string)$bb->bb_link;
-        $best_bet['live_url'] = $bb_link;
-        $best_bet['title'] = (string)$bb->bb_title;
-        $best_bet['desc'] = (string)$bb->bb_desc;
+        $fp_link = (string)$fp->fp_link;
+        $best_bet['live_url'] = $fp_link;
+        $best_bet['title'] = (string)$fp->fp_title;
+        $best_bet['desc'] = (string)$fp->fp_desc;
         
         $best_bet['click_url'] = $base_url .'click.cgi?'. http_build_query(array(
-          'url' => $bb_link,
+          'url' => $fp_link,
           'collection' => $collection,
           'type' =>FUNNELBACK_BEST_BETS_CLICK_TYPE,
         ));
@@ -246,12 +254,25 @@ function funnelback_do_query($query, $start = 1) {
       $items = array();
       foreach($xml->results->result as $result) {
         $item = array();
-        $item['title'] = (string)$result->title;
-        $item['date'] = (string)$result->date;
-        $item['summary'] = (string)$result->summary;
-        $live_url = (string)$result->live_url;
-       $item['live_url'] = _funnelback_truncate_url($live_url);
-        $item['cache_url'] =  (string)$result->cache_url;
+        $title = (string)$result->title;
+        if (strlen($title) > FUNNELBACK_TITLE_MAX_LENGTH) {
+          $title = substr_replace($title, '&hellip;', FUNNELBACK_TITLE_MAX_LENGTH);
+        }
+        $item['title']    = $title;
+        $item['date']     = (string)$result->date;
+        $item['summary']  = (string)$result->summary;
+        $live_url         = (string)$result->live_url;
+        $item['live_url'] = _funnelback_truncate_url($live_url);
+        $item['cache_url']=  (string)$result->cache_url;
+            
+        // We only want to do the following if the result is a non web file (.xls, .pdf, etc)
+        if (_funnelback_check_filetype($result->filetype)) {
+          $item['filetype'] = (string)$result->filetype;
+          $item['filesize'] = (int)$result->filesize;
+          $item = _funnelback_format_label($item);
+          $item['filesize_formatted'] = _funnelback_format_filesize($item['filesize']);
+
+        } 
 
         $click_url = $base_url .'click.cgi?'. http_build_query(array(
           'rank' => (string)$result->rank,
@@ -267,7 +288,7 @@ function funnelback_do_query($query, $start = 1) {
       
       // load up the contextual navigation
       $contextual_nav = array();
-      foreach($xml->contextual_navigation->category as $category) {
+      foreach($xml->fluster->category as $category) {
         $nav_item = array();
         $nav_item['name'] = (string)$category['name'];
         $more_link = (string)$category->more_link;
@@ -315,6 +336,64 @@ function funnelback_do_query($query, $start = 1) {
   }
 }
 
+function _funnelback_format_label($item) {
+
+  $item['filetype_label_short'] = '[' . strtoupper($item['filetype']) . ']';
+  
+  switch ($item['filetype']) {
+    case 'pdf':
+      $item['filetype_label_long'] = 'PDF';
+      break;
+    case 'xls': 
+      $item['filetype_label_long'] = 'Microsoft Excel';
+      break;
+    case 'ppt': 
+      $item['filetype_label_long'] = 'Microsoft Powerpoint';
+      break;
+    case 'rtf':
+      $item['filetype_label_long'] = 'Rich Text';
+      break;
+    case 'doc':
+    case 'docx':
+      $item['filetype_label_long'] = 'Microsoft Word';
+      break;
+  }
+  
+  return $item;
+}
+
+/**
+ * Make sure we only have non web files being displayed as file types (ie not html, cfm, etc)
+ */
+function _funnelback_check_filetype($type) {
+  $accepted_types = array('pdf', 'xls', 'ppt', 'rtf', 'doc', 'docx');
+  if (in_array($type, $accepted_types)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Convert the filesize to a human readable format
+ */
+function _funnelback_format_filesize($size) {
+  $fsize = (int)round($size/1024);
+  
+  // If greater than 1mb and less than 10mb
+  if ($fsize > 1000 && $fzise < 10000) {
+    $fsize = round($fsize/1024, 1);
+    $fsize .= 'm';
+  } 
+  elseif ($fsize > 10000) { // greater than 10mb.
+    $fsize = round($fsize/1024);
+    $fsize .= 'm';
+  } 
+  else { // Less than a mb
+    $fsize .= 'k';
+  }
+  return $fsize;
+} 
+ 
 /**
  * Truncate the display url so it displays on one line
  */

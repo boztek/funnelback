@@ -42,13 +42,28 @@
 <ul id="funnelback-results">
 <?php foreach ($items as $item): ?>
   <li class="funnelback-result">
-    <h3><a href="<?php print $item['click_url'] ?>" title="<?php print $item['live_url'] ?>"><?php print $item['title'] ?></a></h3>
+    <h3>
+    
+    <?php if (isset($item['filetype_label_short'])) : ?>
+      <span class="funnelback_type_label"><?php print $item['filetype_label_short']; ?></span>
+    <?php endif; ?>
+    
+    <a href="<?php print $item['click_url'] ?>" title="<?php print $item['live_url'] ?>"><?php print $item['title'] ?></a></h3>
     <p>
+    
+      <?php if (isset($item['filesize_formatted'])): ?>
+      
+        <span class="filesize"><?php print $item['filesize_formatted']; ?></span> - 
+        <span class="filetype_label"><?php print $item['filetype_label_long']; ?></span>
+         <a href="<?php print $item['cache_url']; ?>">View as HTML</a><br />
+      
+      <?php endif; ?>
+    
       <?php if ($item['date'] != 'No Date'): ?>
         <span class="date"><?php print $item['date']; ?></span>
       <?php endif; ?>
       <span class="summary"><?php print $item['summary']; ?></span></p>
-      <p><cite><?php print $item['live_url'] ?></cite> - <a href="<?php print $summary['base_url'].$item['cache_url']; ?>">Cached</a>
+      <p><cite><?php print $item['live_url'] ?></cite> - <a href="<?php print $item['cache_url']; ?>">Cached</a>
     </p>
   </li>
 <?php endforeach; ?>

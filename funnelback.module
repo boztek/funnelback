@@ -151,10 +151,19 @@ function funnelback_preprocess_funnelback_pager(&$vars) {
   $summary = $vars['summary'];
   $page_size = intval($summary['page_size']);
   $start = intval($summary['start']);
+  $pager_offset = 0;
   $i = 0;
+  $pager_end = FUNNELBACK_DEFAULT_NUM_PAGES;
+  // if we get bigger than 10 pages, offset the pager numbers
+  if ($start > $page_size * FUNNELBACK_DEFAULT_NUM_PAGES) {
+    // round to the nearest 10
+    $pager_offset = floor($start / FUNNELBACK_DEFAULT_NUM_PAGES / FUNNELBACK_DEFAULT_NUM_PAGES) * FUNNELBACK_DEFAULT_NUM_PAGES;
+    $i = $pager_offset;
+    $pager_end = $i + FUNNELBACK_DEFAULT_NUM_PAGES;
+  }
   $pager = array();
   $pages = array();
-  while ($i < FUNNELBACK_DEFAULT_NUM_PAGES && $i * $page_size < $summary['total']) {
+  while ($i < $pager_end && $i * $page_size < $summary['total']) {
     // create the pager title and link
     $page = array();
     $page['title'] = strval($i + 1);
@@ -185,6 +194,11 @@ function funnelback_preprocess_funnelback_pager(&$vars) {
   // flag if we're on the first page
   if (intval($summary['start']) == 1) {
     $pager['first'] = TRUE;
+  }
+  
+  // flag if we're more than the first lot of pages
+  if (intval($summary['start']) > $page_size * FUNNELBACK_DEFAULT_NUM_PAGES) {
+    $pager['first_link'] = '?query='. urlencode($summary['query']) .'&start=1';
   }
   
   $vars['pager'] = $pager;
@@ -271,18 +285,9 @@ function funnelback_do_query($query, $start = 1) {
           $item['filesize'] = (int)$result->filesize;
           $item = _funnelback_format_label($item);
           $item['filesize_formatted'] = _funnelback_format_filesize($item['filesize']);
-
-        } 
-
-        $click_url = $base_url .'click.cgi?'. http_build_query(array(
-          'rank' => (string)$result->rank,
-          'collection' => $collection,
-          'component' => (string)$result->component,
-          'score' => (string)$result->score,
-          'docnum' => (string)$result->docnum,
-          'url' => $live_url,
-        ));
-        $item['click_url'] = $click_url;
+        }
+        
+        $item['click_url'] =  $base_url .(string)$result->click_tracking_url;
         $items[] = $item;
       }
       

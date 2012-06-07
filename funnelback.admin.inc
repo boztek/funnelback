@@ -3,7 +3,7 @@
 /**
  * Form builder for the Funnelback settings page
  */
-function funnelback_admin_form(&$form_state) {
+function funnelback_admin_form($form, &$form_state) {
   $form['description'] = array(
     '#value' => 'These are the settings for Funnelback search integration.',
     '#prefix' => '<div>',

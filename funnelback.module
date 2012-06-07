@@ -16,7 +16,7 @@ function funnelback_menu() {
     'page callback' => 'funnelback_search_view',
     'access arguments' => array('use funnelback search'),
   );
-  $items['admin/settings/funnelback'] = array(
+  $items['admin/config/search/funnelback'] = array(
     'title' => 'Funnelback Settings',
     'description' => 'Configure funnelback settings',
     'page callback' => 'drupal_get_form',
@@ -29,12 +29,18 @@ function funnelback_menu() {
 }
 
 /**
- * Implementation of hook_perm().
+ * Implementation of hook_permission().
  */
-function funnelback_perm() {
+function funnelback_permission() {
   return array(
-    'use funnelback search',
-    'administer funnelback',
+    'use funnelback search' => array(
+      'title'       => t('Use Funnelback search'),
+      'description' => t('Use the Funnelback search block to make searches and display matching results'),
+    ),
+    'administer funnelback' => array(
+      'title'       => t('Administer Funnelback search settings'),
+      'description' => t('Allows access to change the Funnelback API connection parameters'),
+    ),
   );
 }
 
@@ -43,11 +49,11 @@ function funnelback_perm() {
  */
 function funnelback_search_view() {
   $query   = filter_xss($_GET['query']);
-  $start   = filter_xss($_GET['start']);
+  $start   = (!empty($_GET['start'])) ? filter_xss($_GET['start']) : 0;
   $results = funnelback_do_query($query, $start);
   $summary = $results['summary'];
-  $pager   = theme('funnelback_pager', $summary);
-  $output  = theme('funnelback_results', $results, $pager);
+  $pager = theme('funnelback_pager', array('summary' => $summary));
+  $output = theme('funnelback_results', array('results' => $results, 'pager' => $pager));
   return $output;
 }
 
@@ -246,20 +252,22 @@ function funnelback_do_query($query, $start = 1) {
       }
 
       $best_bets = array();
-      foreach ($xml->featured_pages->fp as $fp) {
-        $best_bet = array();
-        $fp_link = (string)$fp->fp_link;
-        $best_bet['live_url'] = $fp_link;
-        $best_bet['title'] = (string)$fp->fp_title;
-        $best_bet['desc'] = (string)$fp->fp_desc;
+      if (!empty($xml->featured_pages)) {
+        foreach ($xml->featured_pages->fp as $fp) {
+          $best_bet = array();
+          $fp_link = (string)$fp->fp_link;
+          $best_bet['live_url'] = $fp_link;
+          $best_bet['title'] = (string)$fp->fp_title;
+          $best_bet['desc'] = (string)$fp->fp_desc;
 
-        $best_bet['click_url'] = $base_url . 'click.cgi?' . http_build_query(array(
-            'url' => $fp_link,
-            'collection' => $collection,
-            'type' => FUNNELBACK_BEST_BETS_CLICK_TYPE,
-          ));
+          $best_bet['click_url'] = $base_url . 'click.cgi?' . http_build_query(array(
+              'url' => $fp_link,
+              'collection' => $collection,
+              'type' => FUNNELBACK_BEST_BETS_CLICK_TYPE,
+            ));
 
-        $best_bets[] = $best_bet;
+          $best_bets[] = $best_bet;
+        }
       }
 
       $items = array();
@@ -290,25 +298,27 @@ function funnelback_do_query($query, $start = 1) {
 
       // load up the contextual navigation
       $contextual_nav = array();
-      foreach ($xml->fluster->category as $category) {
-        $nav_item         = array();
-        $nav_item['name'] = (string)$category['name'];
-        $more_link        = (string)$category->more_link;
-        if (!empty($more_link)) {
-          $nav_item['more_link'] = $more_link;
-        }
+      if (!empty($xml->fluster->category)) {
+        foreach ($xml->fluster->category as $category) {
+          $nav_item         = array();
+          $nav_item['name'] = (string)$category['name'];
+          $more_link        = (string)$category->more_link;
+          if (!empty($more_link)) {
+            $nav_item['more_link'] = $more_link;
+          }
 
-        $clusters = array();
-        foreach ($category->cluster as $cluster) {
-          $clusters[] = array(
-            'title' => (string)$cluster,
-            'count' => (int)$cluster['count'],
-            'link' => (string)$cluster['href'],
-          );
-        }
-        $nav_item['clusters'] = $clusters;
+          $clusters = array();
+          foreach ($category->cluster as $cluster) {
+            $clusters[] = array(
+              'title' => (string)$cluster,
+              'count' => (int)$cluster['count'],
+              'link' => (string)$cluster['href'],
+            );
+          }
+          $nav_item['clusters'] = $clusters;
 
-        $contextual_nav[] = $nav_item;
+          $contextual_nav[] = $nav_item;
+        }
       }
 
       // return the results
@@ -385,7 +395,7 @@ function _funnelback_format_filesize($size) {
   $fsize = (int)round($size / 1024);
 
   // If greater than 1mb and less than 10mb
-  if ($fsize > 1000 && $fzise < 10000) {
+  if ($fsize > 1000 && $fsize < 10000) {
     $fsize = round($fsize / 1024, 1);
     $fsize .= 'm';
   }
@@ -411,7 +421,7 @@ function _funnelback_truncate_url($url) {
   // always keep the host
   $max_len = FUNNELBACK_URL_MAX_LENGTH - strlen($host);
   $path    = $url_arr['path'];
-  $query   = $url_arr['query'];
+  $query   = (!empty($url_arr['query'])) ? $url_arr['query'] : null;
   if (!empty($query)) {
     $path = $path . '?' . $query;
   }

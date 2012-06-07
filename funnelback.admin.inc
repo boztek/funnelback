@@ -33,7 +33,7 @@ function funnelback_admin_form(&$form_state) {
     '#maxlength' => 255,
     '#default_value' => variable_get('funnelback_collection', 'example'),
   );
-  
+
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save'),
@@ -65,3 +65,4 @@ function funnelback_admin_form_submit($form, &$form_state) {
   variable_set('funnelback_collection', $form_state['values']['collection_name']);
   drupal_set_message(t('Your settings have been saved.'));
 }
+

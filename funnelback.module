@@ -1,5 +1,4 @@
 <?php
-
 define('FUNNELBACK_DEFAULT_NUM_PAGES', 10);
 define('FUNNELBACK_BEST_BETS_CLICK_TYPE', 'FP');
 define('FUNNELBACK_URL_MAX_LENGTH', 80);
@@ -25,7 +24,7 @@ function funnelback_menu() {
     'access arguments' => array('administer funnelback'),
     'file' => 'funnelback.admin.inc',
   );
-  
+
   return $items;
 }
 
@@ -34,7 +33,7 @@ function funnelback_menu() {
  */
 function funnelback_perm() {
   return array(
-    'use funnelback search', 
+    'use funnelback search',
     'administer funnelback',
   );
 }
@@ -43,12 +42,12 @@ function funnelback_perm() {
  * Page callback for funnelback search
  */
 function funnelback_search_view() {
-  $query = filter_xss($_GET['query']);
-  $start = filter_xss($_GET['start']);
+  $query   = filter_xss($_GET['query']);
+  $start   = filter_xss($_GET['start']);
   $results = funnelback_do_query($query, $start);
   $summary = $results['summary'];
-  $pager = theme('funnelback_pager', $summary);
-  $output = theme('funnelback_results', $results, $pager);
+  $pager   = theme('funnelback_pager', $summary);
+  $output  = theme('funnelback_results', $results, $pager);
   return $output;
 }
 
@@ -57,7 +56,6 @@ function funnelback_search_view() {
  */
 function funnelback_block($op = 'list', $delta = 0, $edit = array()) {
   switch ($op) {
-
     case 'list':
       $blocks[0]['info'] = t('Funnelback Contextual Nav');
       return $blocks;
@@ -67,7 +65,7 @@ function funnelback_block($op = 'list', $delta = 0, $edit = array()) {
         $block['subject'] = t('Have you tried?');
         $block['content'] = funnelback_contextual_nav_view();
       }
-      
+
       return $block;
   }
 }
@@ -76,10 +74,10 @@ function funnelback_block($op = 'list', $delta = 0, $edit = array()) {
  * Block callback for contextual navs
  */
 function funnelback_contextual_nav_view() {
-  $results = funnelback_static_results_cache();
+  $results        = funnelback_static_results_cache();
   $contextual_nav = $results['contextual_nav'];
-  $summary = $results['summary'];
-  $output = theme('funnelback_contextual_nav_block', $summary, $contextual_nav);
+  $summary        = $results['summary'];
+  $output         = theme('funnelback_contextual_nav_block', $summary, $contextual_nav);
   return $output;
 }
 
@@ -137,10 +135,10 @@ function funnelback_theme() {
  * Preprocess function for the funnelback_results template
  */
 function funnelback_preprocess_funnelback_results(&$vars) {
-  $results = $vars['results'];
-  $vars['summary'] = $results['summary'];
-  $vars['spell'] = $results['spell'];
-  $vars['items'] = $results['results'];
+  $results           = $vars['results'];
+  $vars['summary']   = $results['summary'];
+  $vars['spell']     = $results['spell'];
+  $vars['items']     = $results['results'];
   $vars['best_bets'] = $results['best_bets'];
 }
 
@@ -148,89 +146,88 @@ function funnelback_preprocess_funnelback_results(&$vars) {
  * Preprocess function for the funnelback_results template
  */
 function funnelback_preprocess_funnelback_pager(&$vars) {
-  $summary = $vars['summary'];
-  $page_size = intval($summary['page_size']);
-  $start = intval($summary['start']);
+  $summary      = $vars['summary'];
+  $page_size    = intval($summary['page_size']);
+  $start        = intval($summary['start']);
   $pager_offset = 0;
-  $i = 0;
-  $pager_end = FUNNELBACK_DEFAULT_NUM_PAGES;
+  $i            = 0;
+  $pager_end    = FUNNELBACK_DEFAULT_NUM_PAGES;
   // if we get bigger than 10 pages, offset the pager numbers
   if ($start > $page_size * FUNNELBACK_DEFAULT_NUM_PAGES) {
     // round to the nearest 10
     $pager_offset = floor($start / FUNNELBACK_DEFAULT_NUM_PAGES / FUNNELBACK_DEFAULT_NUM_PAGES) * FUNNELBACK_DEFAULT_NUM_PAGES;
-    $i = $pager_offset;
-    $pager_end = $i + FUNNELBACK_DEFAULT_NUM_PAGES;
+    $i            = $pager_offset;
+    $pager_end    = $i + FUNNELBACK_DEFAULT_NUM_PAGES;
   }
   $pager = array();
   $pages = array();
   while ($i < $pager_end && $i * $page_size < $summary['total']) {
     // create the pager title and link
-    $page = array();
+    $page          = array();
     $page['title'] = strval($i + 1);
-    $page['link'] = '?query='. urlencode($summary['query']) .'&start='. strval($i * $page_size + 1);
-    
+    $page['link']  = '?query=' . urlencode($summary['query']) . '&start=' . strval($i * $page_size + 1);
+
     // flag the current page
     $current = FALSE;
     if ($start == ($i * $page_size + 1)) {
       $current = TRUE;
     }
     $page['current'] = $current;
-    
+
     // create the previous/next links
     if ($current) {
-      $pager['prev_link'] = '?query='. urlencode($summary['query']) .'&start='. strval(($i - 1) * $page_size + 1);
-      $pager['next_link'] = '?query='. urlencode($summary['query']) .'&start='. strval(($i + 1) * $page_size + 1);
+      $pager['prev_link'] = '?query=' . urlencode($summary['query']) . '&start=' . strval(($i - 1) * $page_size + 1);
+      $pager['next_link'] = '?query=' . urlencode($summary['query']) . '&start=' . strval(($i + 1) * $page_size + 1);
     }
-    
+
     // add page to our arrays
     $pages[] = $page;
-    
+
     // increment
     $i++;
   }
-  
+
   $pager['pages'] = $pages;
-  
+
   // flag if we're on the first page
   if (intval($summary['start']) == 1) {
     $pager['first'] = TRUE;
   }
-  
+
   // flag if we're more than the first lot of pages
   if (intval($summary['start']) > $page_size * FUNNELBACK_DEFAULT_NUM_PAGES) {
-    $pager['first_link'] = '?query='. urlencode($summary['query']) .'&start=1';
+    $pager['first_link'] = '?query=' . urlencode($summary['query']) . '&start=1';
   }
-  
+
   $vars['pager'] = $pager;
 }
-
 
 /**
  * Calls the Funnelback XML web service interface, and returns an array containing results data.
  */
 function funnelback_do_query($query, $start = 1) {
-  
-  $base_url = variable_get('funnelback_base_url', 'https://example.funnelback.com/search/');
-  $xml_path = variable_get('funnelback_xml_path', 'xml.cgi');
-  $collection = variable_get('funnelback_collection', 'www-nsw-gov-au');
+
+  $base_url       = variable_get('funnelback_base_url', 'https://example.funnelback.com/search/');
+  $xml_path       = variable_get('funnelback_xml_path', 'xml.cgi');
+  $collection     = variable_get('funnelback_collection', 'www-nsw-gov-au');
   $request_params = array(
     'remote_ip' => ip_address(),
     'query' => $query,
     'start_rank' => $start,
     'collection' => $collection,
   );
-  $url = $base_url.$xml_path .'?'. http_build_query($request_params);
+  $url = $base_url . $xml_path . '?' . http_build_query($request_params);
   watchdog('funnelback', 'Query url: %url', array('%url' => $url), WATCHDOG_DEBUG);
-  
+
   // perform the request
   $response = drupal_http_request($url);
-  
+
   // Process HTTP response code.
   switch ($response->code) {
     case 200:
       // parse the xml data
       $xml = simplexml_load_string($response->data);
-      
+
       // load up the results summary
       $summary = array();
       $summary['start'] = (int)$xml->results_summary->currstart;
@@ -239,46 +236,46 @@ function funnelback_do_query($query, $start = 1) {
       $summary['total'] = (int)$xml->results_summary->fully_matching;
       $summary['query'] = (string)$xml->query_as_processed;
       $summary['base_url'] = $base_url;
-      
+
       $spell = array();
       if ($xml->spell && $xml->spell != '') {
-        $suggestion = array();
-        $suggestion['url'] = (string)$xml->spell->url;
+        $suggestion         = array();
+        $suggestion['url']  = (string)$xml->spell->url;
         $suggestion['text'] = (string)$xml->spell->text;
-        $spell[] = $suggestion;
+        $spell[]            = $suggestion;
       }
-      
+
       $best_bets = array();
-      foreach($xml->featured_pages->fp as $fp) {
+      foreach ($xml->featured_pages->fp as $fp) {
         $best_bet = array();
         $fp_link = (string)$fp->fp_link;
         $best_bet['live_url'] = $fp_link;
         $best_bet['title'] = (string)$fp->fp_title;
         $best_bet['desc'] = (string)$fp->fp_desc;
-        
-        $best_bet['click_url'] = $base_url .'click.cgi?'. http_build_query(array(
-          'url' => $fp_link,
-          'collection' => $collection,
-          'type' =>FUNNELBACK_BEST_BETS_CLICK_TYPE,
-        ));
-        
+
+        $best_bet['click_url'] = $base_url . 'click.cgi?' . http_build_query(array(
+            'url' => $fp_link,
+            'collection' => $collection,
+            'type' => FUNNELBACK_BEST_BETS_CLICK_TYPE,
+          ));
+
         $best_bets[] = $best_bet;
       }
-      
+
       $items = array();
-      foreach($xml->results->result as $result) {
+      foreach ($xml->results->result as $result) {
         $item = array();
         $title = (string)$result->title;
         if (strlen($title) > FUNNELBACK_TITLE_MAX_LENGTH) {
           $title = substr_replace($title, '&hellip;', FUNNELBACK_TITLE_MAX_LENGTH);
         }
-        $item['title']    = $title;
-        $item['date']     = (string)$result->date;
-        $item['summary']  = (string)$result->summary;
-        $live_url         = (string)$result->live_url;
-        $item['live_url'] = _funnelback_truncate_url($live_url);
-        $item['cache_url']=  (string)$result->cache_url;
-            
+        $item['title']     = $title;
+        $item['date']      = (string)$result->date;
+        $item['summary']   = (string)$result->summary;
+        $live_url          = (string)$result->live_url;
+        $item['live_url']  = _funnelback_truncate_url($live_url);
+        $item['cache_url'] = (string)$result->cache_url;
+
         // We only want to do the following if the result is a non web file (.xls, .pdf, etc)
         if (_funnelback_check_filetype($result->filetype)) {
           $item['filetype'] = (string)$result->filetype;
@@ -286,23 +283,23 @@ function funnelback_do_query($query, $start = 1) {
           $item = _funnelback_format_label($item);
           $item['filesize_formatted'] = _funnelback_format_filesize($item['filesize']);
         }
-        
-        $item['click_url'] =  $base_url .(string)$result->click_tracking_url;
+
+        $item['click_url'] = $base_url . (string)$result->click_tracking_url;
         $items[] = $item;
       }
-      
+
       // load up the contextual navigation
       $contextual_nav = array();
-      foreach($xml->fluster->category as $category) {
-        $nav_item = array();
+      foreach ($xml->fluster->category as $category) {
+        $nav_item         = array();
         $nav_item['name'] = (string)$category['name'];
-        $more_link = (string)$category->more_link;
+        $more_link        = (string)$category->more_link;
         if (!empty($more_link)) {
           $nav_item['more_link'] = $more_link;
         }
-        
+
         $clusters = array();
-        foreach($category->cluster as $cluster) {
+        foreach ($category->cluster as $cluster) {
           $clusters[] = array(
             'title' => (string)$cluster,
             'count' => (int)$cluster['count'],
@@ -310,10 +307,10 @@ function funnelback_do_query($query, $start = 1) {
           );
         }
         $nav_item['clusters'] = $clusters;
-        
+
         $contextual_nav[] = $nav_item;
       }
-      
+
       // return the results
       $results = array(
         'summary' => $summary,
@@ -327,43 +324,46 @@ function funnelback_do_query($query, $start = 1) {
         'summary' => $summary,
         'contextual_nav' => $contextual_nav,
       );
-      
+
       funnelback_has_searched(TRUE);
       funnelback_static_results_cache($nav_results);
-          
+
       return $results;
-      
-      break;
+
     default:
       watchdog('funnelback', 'The search query failed due to "%error".', array('%error' => $result->code . ' ' . $result->error), WATCHDOG_WARNING);
-    
-    return NULL;
+
+      return NULL;
   }
 }
 
 function _funnelback_format_label($item) {
 
   $item['filetype_label_short'] = '[' . strtoupper($item['filetype']) . ']';
-  
+
   switch ($item['filetype']) {
     case 'pdf':
       $item['filetype_label_long'] = 'PDF';
       break;
-    case 'xls': 
+
+    case 'xls':
       $item['filetype_label_long'] = 'Microsoft Excel';
       break;
-    case 'ppt': 
+
+    case 'ppt':
       $item['filetype_label_long'] = 'Microsoft Powerpoint';
       break;
+
     case 'rtf':
       $item['filetype_label_long'] = 'Rich Text';
       break;
+
     case 'doc':
     case 'docx':
       $item['filetype_label_long'] = 'Microsoft Word';
       break;
   }
-  
+
   return $item;
 }
 
@@ -382,23 +382,25 @@ function _funnelback_check_filetype($type) {
  * Convert the filesize to a human readable format
  */
 function _funnelback_format_filesize($size) {
-  $fsize = (int)round($size/1024);
-  
+  $fsize = (int)round($size / 1024);
+
   // If greater than 1mb and less than 10mb
   if ($fsize > 1000 && $fzise < 10000) {
-    $fsize = round($fsize/1024, 1);
+    $fsize = round($fsize / 1024, 1);
     $fsize .= 'm';
-  } 
-  elseif ($fsize > 10000) { // greater than 10mb.
-    $fsize = round($fsize/1024);
+  }
+  // greater than 10mb.
+  elseif ($fsize > 10000) {
+    $fsize = round($fsize / 1024);
     $fsize .= 'm';
-  } 
-  else { // Less than a mb
+  }
+  // Less than a mb
+  else {
     $fsize .= 'k';
   }
   return $fsize;
-} 
- 
+}
+
 /**
  * Truncate the display url so it displays on one line
  */
@@ -408,17 +410,18 @@ function _funnelback_truncate_url($url) {
   $host = $url_arr['host'];
   // always keep the host
   $max_len = FUNNELBACK_URL_MAX_LENGTH - strlen($host);
-  $path = $url_arr['path'];
-  $query = $url_arr['query'];
+  $path    = $url_arr['path'];
+  $query   = $url_arr['query'];
   if (!empty($query)) {
-    $path = $path .'?'. $query;
+    $path = $path . '?' . $query;
   }
   // put elipsis in the middle of the path
   $path_len = strlen($path);
   if ($path_len > $max_len) {
     $start = $max_len / 2;
-    $trunc =  $path_len - $max_len;
-    $path = substr_replace($path, '&hellip;', $start, $trunc);
+    $trunc = $path_len - $max_len;
+    $path  = substr_replace($path, '&hellip;', $start, $trunc);
   }
-  return $host.$path;
+  return $host . $path;
 }
+

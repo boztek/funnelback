@@ -237,7 +237,7 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
   drupal_alter('funnelback_query', $request_params);
 
   // Build the search URL with query params.
-  $url = $base_url . $api_path . '?' . http_build_query($request_params);
+  $url = $base_url . $api_path . '?' . drupal_http_build_query($request_params);
   watchdog('funnelback', 'Query url: %url', array('%url' => $url), WATCHDOG_DEBUG);
 
   $response = drupal_http_request($url);
@@ -326,7 +326,7 @@ function funnelback_xml_query($response, $base_url) {
       $best_bet['title'] = (string)$fp->fp_title;
       $best_bet['desc'] = (string)$fp->fp_desc;
 
-      $best_bet['click_url'] = $base_url . 'click.cgi?' . http_build_query(array(
+      $best_bet['click_url'] = $base_url . 'click.cgi?' . drupal_http_build_query(array(
           'url' => $fp_link,
           'collection' => $collection,
           'type' => FUNNELBACK_BEST_BETS_CLICK_TYPE,
@@ -450,7 +450,7 @@ function funnelback_json_query($response, $base_url) {
       $best_bet['title'] = (string)$fp['fpTitle'];
       $best_bet['desc'] = (string)$fp['fpDesc'];
 
-      $best_bet['click_url'] = $base_url . 'click.cgi?' . http_build_query(array(
+      $best_bet['click_url'] = $base_url . 'click.cgi?' . drupal_http_build_query(array(
           'url' => $fp_link,
           'collection' => $collection,
           'type' => FUNNELBACK_BEST_BETS_CLICK_TYPE,

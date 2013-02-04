@@ -23,7 +23,7 @@ Testing
 
 You can test the search page by entering a search url directly in the browser address bar.
 
-e.g. http://example.com/search/funnelback?query=test
+e.g. http://example.com/funnelback/search?query=test
 
 where 'test' is a search keyword
 

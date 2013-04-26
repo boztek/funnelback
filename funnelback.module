@@ -15,6 +15,10 @@ define('FUNNELBACK_API_HTML', 1);
 define('FUNNELBACK_API_XML', 2);
 define('FUNNELBACK_API_JSON', 3);
 
+define('FUNNELBACK_DEBUG_NONE', 'none');
+define('FUNNELBACK_DEBUG_LOG', 'log');
+define('FUNNELBACK_DEBUG_VERBOSE', 'verbose');
+
 /**
  * Implements hook_menu().
  */
@@ -233,6 +237,11 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
 
   $response = drupal_http_request($url);
 
+  funnelback_debug('Requesting url: %url. Response %response', array(
+    '%url' => $url,
+    '%response' => $response->code,
+  ));
+
   if ($response->code == 200) {
     switch ($api) {
       case FUNNELBACK_API_HTML:
@@ -250,7 +259,9 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
     }
   }
   else {
-    watchdog('funnelback', 'The search query failed due to "%error".', array('%error' => $response->code . ' ' . $response->error), WATCHDOG_WARNING);
+    funnelback_debug('The search query failed due to "%error".', array(
+      '%error' => $response->code . ' ' . $response->error,
+    ), WATCHDOG_WARNING);
     return NULL;
   }
 
@@ -258,6 +269,34 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
   drupal_alter('funnelback_result', $result);
 
   return $result;
+}
+
+/**
+ * Helper to log debug messages.
+ *
+ * @param string $message
+ *   A message, suitable for watchdog().
+ * @param array $args
+ *   (optional) An array of arguments, as per watchdog().
+ * @param int $log_level
+ *   (optional) The watchdog() log level. Defaults to WATCHDOG_DEBUG.
+ */
+function funnelback_debug($message, $args = array(), $log_level = WATCHDOG_DEBUG) {
+
+  $debug = variable_get('funnelback_debug_mode', FUNNELBACK_DEBUG_NONE);
+  if ($debug == FUNNELBACK_DEBUG_LOG) {
+    watchdog('funnelback', $message, $args, $log_level);
+  }
+  elseif ($debug == FUNNELBACK_DEBUG_VERBOSE) {
+    $string = format_string($message, $args);
+    if ($log_level >= WATCHDOG_ERROR) {
+      $message_level = 'error';
+    }
+    else {
+      $message_level = 'status';
+    }
+    drupal_set_message($string, $message_level);
+  }
 }
 
 /**

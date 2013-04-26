@@ -61,6 +61,16 @@ function funnelback_admin_form($form, &$form_state) {
     '#maxlength' => 255,
     '#default_value' => variable_get('funnelback_profile', NULL),
   );
+  $form['funnelback_debug_mode'] = array(
+    '#type' => 'select',
+    '#title' => t('Debugging'),
+    '#options' => array(
+      FUNNELBACK_DEBUG_NONE => t('None'),
+      FUNNELBACK_DEBUG_LOG => t('Log requests'),
+      FUNNELBACK_DEBUG_VERBOSE => t('Verbose output'),
+    ),
+    '#default_value' => variable_get('funnelback_debug_mode', FUNNELBACK_DEBUG_NONE),
+  );
 
   return system_settings_form($form);
 }

@@ -70,37 +70,6 @@ function funnelback_search_view() {
 }
 
 /**
- * Implements hook_block().
- */
-function funnelback_block($op = 'list', $delta = 0, $edit = array()) {
-  switch ($op) {
-    case 'list':
-      $blocks[0]['info'] = t('Funnelback Contextual Nav');
-      return $blocks;
-
-    case 'view':
-      if ($delta == 0 && funnelback_has_searched()) {
-        $block['subject'] = t('Have you tried?');
-        $block['content'] = funnelback_contextual_nav_view();
-
-        return $block;
-      }
-  }
-}
-
-/**
- * Block callback for contextual navigation.
- */
-function funnelback_contextual_nav_view() {
-  $results        = funnelback_static_results_cache();
-  $contextual_nav = $results['contextual_nav'];
-  $summary        = $results['summary'];
-  $output         = theme('funnelback_contextual_nav_block', $summary, $contextual_nav);
-
-  return $output;
-}
-
-/**
  * Cache search results.
  *
  * Need to keep a cache of the search results for the entire page duration,
@@ -151,9 +120,6 @@ function funnelback_theme() {
     'funnelback_pager' => array(
       'arguments' => array('summary' => NULL),
       'template' => 'funnelback_pager',
-    ),
-    'funnelback_search' => array(
-      'template' => 'funnelback_search',
     ),
   );
 }
@@ -617,3 +583,106 @@ function _funnelback_truncate_url($url) {
   return $host . $path;
 }
 
+/**
+ * Implements hook_block_info().
+ */
+function funnelback_block_info() {
+
+  // Search block.
+  $blocks['search_form'] = array(
+    'info' => t('Funnelback search block'),
+    'cache' => DRUPAL_NO_CACHE,
+    'properties' => array(
+      'administrative' => TRUE,
+    ),
+  );
+
+  // Provide 'have you tried?' block.
+  $blocks['contextual'] = array(
+    'info' => t('Funnelback Contextual Nav'),
+    'cache' => DRUPAL_NO_CACHE,
+  );
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function funnelback_block_view($delta = '') {
+
+  $block = array();
+  switch ($delta) {
+    case 'search_form':
+      if (user_access('use funnelback search')) {
+        $block['subject'] = t('');
+        $block['content'] = drupal_get_form('funnelback_search_block_form');
+      }
+      break;
+
+    case 'contextual':
+      if (user_access('use funnelback search')) {
+        $block['subject'] = t('');
+        $block['content'] = funnelback_contextual_nav_view();
+      }
+      break;
+  }
+
+  return $block;
+}
+
+/**
+ * Search block form.
+ */
+function funnelback_search_block_form($form, &$form_state) {
+
+  $form['funnelback_search_field'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Search'),
+    '#title_display' => 'invisible',
+    '#size' => 15,
+    '#default_value' => '',
+    '#attributes' => array('title' => t('Enter the terms you wish to search for.')),
+  );
+
+  $form['funnelback_search_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Search'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit callback for search block form.
+ */
+function funnelback_search_block_form_submit($form, &$form_state) {
+
+  $query = filter_xss($form_state['values']['funnelback_search_field']);
+
+  // Fixes issues where drupal_goto may not work.
+  if (isset($_GET['destination'])) {
+    unset($_GET['destination']);
+  }
+
+  // Push users off to the search page.
+  drupal_goto('funnelback/search', array(
+    'query' => array('query' => $query),
+  ));
+}
+
+/**
+ * Block callback for contextual navigation.
+ */
+function funnelback_contextual_nav_view() {
+
+  $results = funnelback_static_results_cache();
+  $contextual_nav = $results['contextual_nav'];
+  $summary = $results['summary'];
+  $output = theme('funnelback_contextual_nav_block', array(
+    'summary' => $summary,
+    'contextual_nav' => $contextual_nav,
+  ));
+
+  return $output;
+}

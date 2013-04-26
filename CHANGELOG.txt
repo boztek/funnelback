@@ -1,0 +1,6 @@
+Funnelback
+
+7.x-1.0-dev
+-----------
+- Fixed Issue #1716416 by torpy | cafuego: Added Pre-coded search result blocks.
+- Coding standards cleanup

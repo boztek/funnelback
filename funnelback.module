@@ -241,42 +241,15 @@ function funnelback_do_query($query, $api = NULL, $start = 1) {
 
   // Set API paths.
   if (empty($api_path)) {
-    // Classic UI paths.
-    if ($ui_version == FUNNELBACK_UI_CLASSIC) {
-      if ($api == FUNNELBACK_API_XML) {
-        $api_path = 'xml.cgi';
-      }
-      if ($api == FUNNELBACK_API_JSON) {
-        funnelback_debug('The Funnelback JSON API requires the Modern UI', array(), WATCHDOG_ERROR);
-        return FALSE;
-      }
-      if ($api == FUNNELBACK_API_HTML) {
-        $api_path = 'search.cgi';
-      }
-    }
-    else {
-      // Modern UI paths.
-      if ($api == FUNNELBACK_API_XML) {
-        $api_path = 's/search.xml';
-      }
-      if ($api == FUNNELBACK_API_JSON) {
-        $api_path = 's/search.json';
-      }
-      if ($api == FUNNELBACK_API_HTML) {
-        $api_path = 's/search.html';
-      }
+    $api_path = funnelback_get_api_path($api, $ui_version);
+
+    if ($api_path == FALSE) {
+      return FALSE;
     }
   }
 
-  // Build the search URL with query params.
-  $base_url = rtrim($base_url, '/');
-  $url = $base_url . '/' . $api_path . '?' . drupal_http_build_query($request_params);
-  $response = drupal_http_request($url);
-
-  funnelback_debug('Requesting url: %url. Response %response', array(
-    '%url' => $url,
-    '%response' => $response->code,
-  ));
+  // Do the request.
+  $response = funnelback_request($base_url, $api_path, $request_params);
 
   if ($response->code == 200) {
     switch ($api) {
@@ -305,6 +278,78 @@ function funnelback_do_query($query, $api = NULL, $start = 1) {
   drupal_alter('funnelback_result', $result);
 
   return $result;
+}
+
+/**
+ * Make a request.
+ *
+ * @param string $base_url
+ *   The base URL for the request.
+ * @param string $api_path
+ *   The api path from the base URL.
+ * @param string $request_params
+ *   The request parameters.
+ *
+ * @return object
+ *   The response object.
+ */
+function funnelback_request($base_url, $api_path, $request_params) {
+
+  // Build the search URL with query params.
+  $base_url = rtrim($base_url, '/');
+  $url = $base_url . '/' . $api_path . '?' . drupal_http_build_query($request_params);
+
+  $response = drupal_http_request($url);
+
+  funnelback_debug('Requesting url: %url. Response %response', array(
+    '%url' => $url,
+    '%response' => $response->code,
+  ));
+
+  return $response;
+}
+
+/**
+ * Get an API path.
+ *
+ * @param int $response_type
+ *   The API response type requested.
+ * @param int $ui_version
+ *   The UI version to use.
+ *
+ * @return bool|string
+ *   The API Path, or FALSE.
+ */
+function funnelback_get_api_path($response_type = FUNNELBACK_API_XML, $ui_version = FUNNELBACK_UI_CLASSIC) {
+
+  $api_path = FALSE;
+
+  // Classic UI paths.
+  if ($ui_version == FUNNELBACK_UI_CLASSIC) {
+    if ($response_type == FUNNELBACK_API_XML) {
+      $api_path = 'xml.cgi';
+    }
+    if ($response_type == FUNNELBACK_API_JSON) {
+      funnelback_debug('The Funnelback JSON API requires the Modern UI', array(), WATCHDOG_ERROR);
+    }
+    if ($response_type == FUNNELBACK_API_HTML) {
+      $api_path = 'search.cgi';
+    }
+  }
+  else {
+    // Modern UI paths.
+    if ($response_type == FUNNELBACK_API_XML) {
+      $api_path = 's/search.xml';
+    }
+    if ($response_type == FUNNELBACK_API_JSON) {
+      $api_path = 's/search.json';
+    }
+    if ($response_type == FUNNELBACK_API_HTML) {
+      $api_path = 's/search.html';
+    }
+  }
+
+  return $api_path;
 }
 
 /**
@@ -338,6 +383,12 @@ function funnelback_debug($message, $args = array(), $log_level = WATCHDOG_DEBUG
 /**
  * Calls the Funnelback HTML web service interface.
  *
+ * @todo: Incompatible with current build method.
+ *
+ * Because this returns a fully rendered HTML page, it is currently
+ * incompatible with the funnelback_do_query() workflow, and needs to be
+ * rewritten.
+ *
  * @param object $response
  *   A HTML response object.
  * @param string $base_url
@@ -347,9 +398,11 @@ function funnelback_debug($message, $args = array(), $log_level = WATCHDOG_DEBUG
  *   No return.
  */
 function funnelback_html_query($response, $base_url) {
-  // @todo: Find someone who needs this and make them write this function.
 
-  dsm($response);
+  if (isset($response->data)) {
+    return $response->data;
+  }
+
   return NULL;
 }
 

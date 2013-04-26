@@ -1,9 +1,15 @@
+<?php
+/**
+ * @file
+ * Template file for funnelback results.
+ */
+?>
 <div id="funnelback-results-page">
 
 <?php if ($summary['total'] > 0): ?>
 
 <div id="funnelback-summary">
-<?php print $summary['start'] ?> - <?php print $summary['end'] ?> 
+<?php print $summary['start'] ?> - <?php print $summary['end'] ?>
           search results of <?php print $summary['total'] ?>
           for <strong><?php print $summary['query']; ?></strong>
 </div>
@@ -29,7 +35,7 @@
 
 <?php if (!empty($spell)): ?>
 <div id="funnelback-spell">
-  <p>Did you mean: 
+  <p>Did you mean:
   <?php foreach ($spell as $suggestion): ?>
     <a href='?<?php print $suggestion['url'] ?>'><?php print $suggestion['text'] ?></a>
   <?php endforeach; ?>
@@ -43,22 +49,22 @@
 <?php foreach ($items as $item): ?>
   <li class="funnelback-result">
     <h3>
-    
+
     <?php if (isset($item['filetype_label_short'])) : ?>
       <span class="funnelback_type_label"><?php print $item['filetype_label_short']; ?></span>
     <?php endif; ?>
-    
+
     <a href="<?php print $item['click_url'] ?>" title="<?php print $item['live_url'] ?>"><?php print $item['title'] ?></a></h3>
     <p>
-    
+
       <?php if (isset($item['filesize_formatted'])): ?>
-      
-        <span class="filesize"><?php print $item['filesize_formatted']; ?></span> - 
+
+        <span class="filesize"><?php print $item['filesize_formatted']; ?></span> -
         <span class="filetype_label"><?php print $item['filetype_label_long']; ?></span>
          <a href="<?php print $item['cache_url']; ?>">View as HTML</a><br />
-      
+
       <?php endif; ?>
-    
+
       <?php if ($item['date'] != 'No Date'): ?>
         <span class="date"><?php print $item['date']; ?></span>
       <?php endif; ?>
@@ -88,4 +94,3 @@
 
 
 </div>
-

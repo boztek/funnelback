@@ -1,9 +1,15 @@
 <?php
 
 /**
- * Form builder for the Funnelback settings page
+ * @file
+ * Admin functions for the funnelback module.
+ */
+
+/**
+ * Form builder for the Funnelback settings page.
  */
 function funnelback_admin_form($form, &$form_state) {
+
   $form['description'] = array(
     '#value' => 'These are the settings for Funnelback search integration.',
     '#prefix' => '<div>',
@@ -53,7 +59,7 @@ function funnelback_admin_form($form, &$form_state) {
 }
 
 /**
- * Form validation callback for the funnelback admin form
+ * Form validation callback for the funnelback admin form.
  */
 function funnelback_admin_form_validate($form, &$form_state) {
   if ($form_state['values']['base_url'] == '') {
@@ -71,7 +77,7 @@ function funnelback_admin_form_validate($form, &$form_state) {
 }
 
 /**
- * Form submission callback for the funnelback admin form
+ * Form submission callback for the funnelback admin form.
  */
 function funnelback_admin_form_submit($form, &$form_state) {
   variable_set('funnelback_base_url', $form_state['values']['base_url']);
@@ -80,4 +86,3 @@ function funnelback_admin_form_submit($form, &$form_state) {
   variable_set('funnelback_collection', $form_state['values']['collection_name']);
   drupal_set_message(t('Your settings have been saved.'));
 }
-

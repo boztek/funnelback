@@ -1,7 +1,7 @@
 <?php
 /**
- * @file funnelback.install
- * Install and upgrade routines.
+ * @file
+ * Install and upgrade routines for Funnelback.
  */
 
 /**

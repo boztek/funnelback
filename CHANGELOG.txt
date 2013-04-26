@@ -2,5 +2,9 @@ Funnelback
 
 7.x-1.0-dev
 -----------
+- Fixed Issue #1947352 by torpy: Added support for 'profile' query parameter.
 - Fixed Issue #1716416 by torpy | cafuego: Added Pre-coded search result blocks.
+- Better support for both Classic and Modern UI versions
+- Automatic path selection for API endpoint
+- Debugging support.
 - Coding standards cleanup

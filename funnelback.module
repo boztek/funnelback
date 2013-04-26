@@ -19,6 +19,9 @@ define('FUNNELBACK_DEBUG_NONE', 'none');
 define('FUNNELBACK_DEBUG_LOG', 'log');
 define('FUNNELBACK_DEBUG_VERBOSE', 'verbose');
 
+define('FUNNELBACK_UI_CLASSIC', 1);
+define('FUNNELBACK_UI_MODERN', 11);
+
 /**
  * Implements hook_menu().
  */
@@ -62,10 +65,10 @@ function funnelback_permission() {
  * Page callback for funnelback search.
  */
 function funnelback_search_view() {
-  $api = variable_get('funnelback_api_format', FUNNELBACK_API_XML);
+
   $query   = filter_xss($_GET['query']);
   $start   = (!empty($_GET['start'])) ? filter_xss($_GET['start']) : 0;
-  $results = funnelback_do_query($query, $api, $start);
+  $results = funnelback_do_query($query, NULL, $start);
   $summary = $results['summary'];
   $pager = theme('funnelback_pager', array('summary' => $summary));
   $output = theme('funnelback_results', array('results' => $results, 'pager' => $pager));
@@ -209,10 +212,15 @@ function funnelback_preprocess_funnelback_pager(&$vars) {
  * @return array|null
  *   An array of results when successful or NULL on failure.
  */
-function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
+function funnelback_do_query($query, $api = NULL, $start = 1) {
+
+  if (empty($api)) {
+    $api = variable_get('funnelback_api_format', FUNNELBACK_API_XML);
+  }
+  $ui_version = variable_get('funnelback_ui_version', FUNNELBACK_UI_CLASSIC);
 
   $base_url       = variable_get('funnelback_base_url', 'https://example.funnelback.com/search/');
-  $api_path       = variable_get('funnelback_api_path', 'xml.cgi');
+  $api_path       = variable_get('funnelback_api_path', NULL);
   $collection     = variable_get('funnelback_collection', 'example-collection');
   $profile        = variable_get('funnelback_profile', NULL);
 
@@ -231,10 +239,38 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
   // Allow modules to modify the query parameters.
   drupal_alter('funnelback_query', $request_params);
 
-  // Build the search URL with query params.
-  $url = $base_url . $api_path . '?' . drupal_http_build_query($request_params);
-  watchdog('funnelback', 'Query url: %url', array('%url' => $url), WATCHDOG_DEBUG);
+  // Set API paths.
+  if (empty($api_path)) {
+    // Classic UI paths.
+    if ($ui_version == FUNNELBACK_UI_CLASSIC) {
+      if ($api == FUNNELBACK_API_XML) {
+        $api_path = 'xml.cgi';
+      }
+      if ($api == FUNNELBACK_API_JSON) {
+        funnelback_debug('The Funnelback JSON API requires the Modern UI', array(), WATCHDOG_ERROR);
+        return FALSE;
+      }
+      if ($api == FUNNELBACK_API_HTML) {
+        $api_path = 'search.cgi';
+      }
+    }
+    else {
+      // Modern UI paths.
+      if ($api == FUNNELBACK_API_XML) {
+        $api_path = 's/search.xml';
+      }
+      if ($api == FUNNELBACK_API_JSON) {
+        $api_path = 's/search.json';
+      }
+      if ($api == FUNNELBACK_API_HTML) {
+        $api_path = 's/search.html';
+      }
+    }
+  }
 
+  // Build the search URL with query params.
+  $base_url = rtrim($base_url, '/');
+  $url = $base_url . '/' . $api_path . '?' . drupal_http_build_query($request_params);
   $response = drupal_http_request($url);
 
   funnelback_debug('Requesting url: %url. Response %response', array(

@@ -24,12 +24,23 @@ function funnelback_admin_form($form, &$form_state) {
     '#default_value' => variable_get('funnelback_base_url', 'https://example.funnelback.com/search/'),
     '#required' => TRUE,
   );
+  $form['funnelback_ui_version'] = array(
+    '#type' => 'select',
+    '#title' => t('API Version ("UI")'),
+    '#options' => array(
+      FUNNELBACK_UI_CLASSIC => t('Classic UI'),
+      FUNNELBACK_UI_MODERN => t('Modern UI (version 11+)'),
+    ),
+    '#default_value' => variable_get('funnelback_ui_version', FUNNELBACK_UI_CLASSIC),
+    '#required' => TRUE,
+  );
   $form['funnelback_api_format'] = array(
     '#type' => 'select',
     '#title' => t('API Format'),
     '#description' => t('The API format used to return data'),
     '#options' => array(
-      FUNNELBACK_API_HTML => t('HTML'),
+      // HTML requests are not currently supported.
+      // FUNNELBACK_API_HTML => t('HTML'),
       FUNNELBACK_API_XML => t('XML'),
       FUNNELBACK_API_JSON => t('JSON'),
     ),
@@ -39,10 +50,10 @@ function funnelback_admin_form($form, &$form_state) {
   $form['funnelback_api_path'] = array(
     '#type' => 'textfield',
     '#title' => t('API Path'),
-    '#description' => t('The path to the API interface'),
+    '#description' => t('The path to the API interface. This is optional, as the API Format will automatically select a default. Setting this value will override that above.'),
     '#size' => 60,
     '#maxlength' => 255,
-    '#default_value' => variable_get('funnelback_api_path', 'xml.cgi'),
+    '#default_value' => variable_get('funnelback_api_path', NULL),
   );
   $form['funnelback_collection'] = array(
     '#type' => 'textfield',

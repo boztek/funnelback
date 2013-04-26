@@ -210,7 +210,7 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
   $base_url       = variable_get('funnelback_base_url', 'https://example.funnelback.com/search/');
   $api_path       = variable_get('funnelback_api_path', 'xml.cgi');
   $collection     = variable_get('funnelback_collection', 'example-collection');
-  $profile        = variable_get('funnelback_profile', 'fahcsia');
+  $profile        = variable_get('funnelback_profile', NULL);
 
   // Create an array of query params.
   $request_params = array(
@@ -218,8 +218,11 @@ function funnelback_do_query($query, $api = FUNNELBACK_API_XML, $start = 1) {
     'query' => $query,
     'start_rank' => $start,
     'collection' => $collection,
-    'profile' => $profile,
   );
+
+  if (!empty($profile)) {
+    $request_params['profile'] = $profile;
+  }
 
   // Allow modules to modify the query parameters.
   drupal_alter('funnelback_query', $request_params);

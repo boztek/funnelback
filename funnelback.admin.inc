@@ -53,6 +53,14 @@ function funnelback_admin_form($form, &$form_state) {
     '#default_value' => variable_get('funnelback_collection', 'example'),
     '#required' => TRUE,
   );
+  $form['funnelback_profile'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Profile Name'),
+    '#description' => t('(Optional) Funnelback profile name, only if required by Funnelback.'),
+    '#size' => 30,
+    '#maxlength' => 255,
+    '#default_value' => variable_get('funnelback_profile', NULL),
+  );
 
   return system_settings_form($form);
 }

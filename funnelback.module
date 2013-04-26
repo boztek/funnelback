@@ -743,10 +743,12 @@ function funnelback_search_block_form_submit($form, &$form_state) {
     unset($_GET['destination']);
   }
 
-  // Push users off to the search page.
-  drupal_goto('funnelback/search', array(
-    'query' => array('query' => $query),
-  ));
+  // Push users off to the search page, if we arent there already.
+  if (arg(0) != 'funnelback' && arg(1) != 'search') {
+    drupal_goto('funnelback/search', array(
+      'query' => array('query' => $query),
+    ));
+  }
 }
 
 /**

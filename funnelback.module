@@ -46,6 +46,13 @@ function funnelback_menu() {
 }
 
 /**
+ * Implements hook_page().
+ */
+function funnelback_preprocess_html($theme = NULL) {
+  drupal_add_css(drupal_get_path('module', 'funnelback') . '/funnelback.css');
+}
+
+/**
  * Implements hook_permission().
  */
 function funnelback_permission() {

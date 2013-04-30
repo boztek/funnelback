@@ -11,7 +11,7 @@
       <li class="pager-prev"><a href="<?php print $pager['first_link'] ?>">First</a></li>
     <?php endif ?>
 
-    <?php if (!$pager['first']): ?>
+    <?php if (isset($pager['first']) && !$pager['first']): ?>
       <li class="pager-prev"><a href="<?php print $pager['prev_link'] ?>">Prev</a></li>
     <?php endif ?>
 

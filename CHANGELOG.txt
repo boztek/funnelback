@@ -1,5 +1,9 @@
 Funnelback
 
+7.x-2.0-dev
+-----------
+- Started development on version 2 rewrite
+
 7.x-1.0-dev
 -----------
 - Issue #1983038 by xtfer: Fixed Notice on results page.

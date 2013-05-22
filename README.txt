@@ -11,12 +11,13 @@ Configuration
 
 One the module is installed, and you have your Funnelback account, you will need:
 
-* Catalog Name
+* Profile name
 * Search base url
+* Default collection
 
-The Search base url is everything up to the /search.cgi? part of the URL Funnelback provide you.
+The Search base url is everything up to the /search.<FORMAT>? part of the URL Funnelback provide you.
 
-Go to /admin/settings/funnelback and enter the catalog name and base url.
+Go to /admin/settings/funnelback and enter these values.
 
 Testing
 =======

@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\funnelback;
+namespace Drupal\funnelback\tests;
 
 require_once 'PHPUnit/Autoload.php';
 

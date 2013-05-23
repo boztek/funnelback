@@ -1,6 +1,7 @@
 name = Funnelback Search Integration
 description = Provides search integration with a Funnelback XML search interface
 core = 7.x
+version = 2.0-dev
 package = Search
 dependencies[] = xautoload
 files[] = tests/funnelback.test

@@ -1,0 +1,22 @@
+<?php
+
+/**
+ * @file
+ * Funnelback module Drupal integration tests.
+ */
+
+/**
+ * Test stub.
+ */
+class FunnelbackExampleTestCase extends DrupalWebTestCase {
+  protected $privileged_user;
+
+  public static function getInfo() {
+    // Note: getInfo() strings are not translated with t().
+    return array(
+      'name' => 'Funnelback',
+      'description' => 'Stub.',
+      'group' => 'Funnelback',
+    );
+  }
+}
